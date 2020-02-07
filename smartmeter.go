@@ -23,7 +23,7 @@ func main() {
 			log.Fatal(err)
 		}
 		fmt.Println("READ!")
-		fmt.Println(reply)
+		fmt.Println(string(reply))
 
 		i++
 	}
