@@ -68,6 +68,13 @@ func parseTelegrams(tChan chan string) {
 			continue
 		}
 
-		fmt.Println(telegram)
+		printTelegram(telegram)
 	}
+}
+
+func printTelegram(t dsmr.Telegram) {
+	delivered, _ := t.ActualElectricityPowerDelivered()
+	fmt.Println("Actual electricity delivered", delivered, "watt")
+	received, _ := t.ActualElectricityPowerReceived()
+	fmt.Println("Actual electricity received", received, "watt")
 }
