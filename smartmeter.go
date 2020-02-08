@@ -77,4 +77,16 @@ func printTelegram(t dsmr.Telegram) {
 	fmt.Println("Actual electricity delivered", delivered, "kw")
 	received, _ := t.ActualElectricityPowerReceived()
 	fmt.Println("Actual electricity received", received, "kw")
+	gas1, _ := gasDelivered(t, 1)
+	fmt.Println("Gas delivered on channel 1", gas1, "m3")
+	gas2, _ := gasDelivered(t, 2)
+	fmt.Println("Gas delivered on channel 1", gas2, "m3")
+}
+
+func gasDelivered(t dsmr.Telegram, channel int) (string, bool) {
+	identifier := fmt.Sprintf("0-%d:24.2.1.255", channel)
+	if do, ok := t.DataObjects[identifier]; ok {
+		return do.Value, true
+	}
+	return "", false
 }
