@@ -6,14 +6,16 @@ import (
 	"log"
 
 	"github.com/tarm/serial"
+
+	dsmr "github.com/roaldnefs/go-dsmr"
 )
 
 func main() {
-		rChan := make(chan string)
+	rChan := make(chan string)
 	tChan := make(chan string)
 	go readLines(rChan)
 	go collectTelegrams(rChan, tChan)
-	go parseTelegrams(tChan)
+	parseTelegrams(tChan)
 }
 
 func readLines(rChan chan string) {
@@ -59,6 +61,13 @@ func collectTelegrams(rChan chan string, tChan chan string) {
 
 func parseTelegrams(tChan chan string) {
 	for t := range tChan {
-		fmt.Println(t)
+		telegram, err := dsmr.ParseTelegram(t)
+		if err != nil {
+			fmt.Println(err)
+			log.Fatal(err)
+			continue
+		}
+
+		fmt.Println(telegram)
 	}
 }
