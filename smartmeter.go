@@ -84,7 +84,7 @@ func printTelegram(t dsmr.Telegram) {
 }
 
 func gasDelivered(t dsmr.Telegram, channel int) (string, bool) {
-	identifier := fmt.Sprintf("0-%d:24.2.1.255", channel)
+	identifier := fmt.Sprintf("0-%d:24.2.1", channel)
 	if do, ok := t.DataObjects[identifier]; ok {
 		return do.Value, true
 	}
