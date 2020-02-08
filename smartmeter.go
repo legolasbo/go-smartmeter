@@ -7,7 +7,7 @@ import (
 
 	"github.com/tarm/serial"
 
-	dsmr "github.com/roaldnefs/go-dsmr"
+	dsmr "github.com/legolasbo/go-dsmr"
 )
 
 func main() {
@@ -24,7 +24,7 @@ func readLines(rChan chan string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	reader := bufio.NewReader(s)
 	for {
 		reply, err := reader.ReadString('\n')
@@ -32,7 +32,7 @@ func readLines(rChan chan string) {
 			log.Fatal(err)
 			continue
 		}
-	
+
 		rChan <- reply
 	}
 }
@@ -51,7 +51,7 @@ func collectTelegrams(rChan chan string, tChan chan string) {
 			continue
 		}
 
-		telegram += line;
+		telegram += line
 
 		if line[0] == '!' {
 			tChan <- telegram
@@ -77,16 +77,8 @@ func printTelegram(t dsmr.Telegram) {
 	fmt.Println("Actual electricity delivered", delivered, "kw")
 	received, _ := t.ActualElectricityPowerReceived()
 	fmt.Println("Actual electricity received", received, "kw")
-	gas1, _ := gasDelivered(t, 1)
+	gas1, _ := t.MeterReadingGasDeliveredToClient(1)
 	fmt.Println("Gas delivered on channel 1", gas1, "m3")
-	gas2, _ := gasDelivered(t, 2)
-	fmt.Println("Gas delivered on channel 1", gas2, "m3")
-}
-
-func gasDelivered(t dsmr.Telegram, channel int) (string, bool) {
-	identifier := fmt.Sprintf("0-%d:24.2.1", channel)
-	if do, ok := t.DataObjects[identifier]; ok {
-		return do.Value, true
-	}
-	return "", false
+	gas2, _ := t.MeterReadingGasDeliveredToClient(2)
+	fmt.Println("Gas delivered on channel 2", gas2, "m3")
 }
