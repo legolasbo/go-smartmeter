@@ -9,13 +9,13 @@ import (
 	dsmr "github.com/legolasbo/go-dsmr"
 )
 
-// ReadTelegrams reads telegrams from the given serial port into the given telegram channel.
-func ReadTelegrams(serialPort string, tChan chan dsmr.Telegram) {
+// ReadTelegrams reads telegrams from the given serial port into the given readout channel.
+func ReadTelegrams(serialPort string, rChan chan Readout) {
 	lineChan := make(chan string)
 	rawTelegramChan := make(chan string)
 	go readLines(serialPort, lineChan)
 	go collectTelegrams(lineChan, rawTelegramChan)
-	parseTelegrams(rawTelegramChan, tChan)
+	parseTelegrams(rawTelegramChan, rChan)
 }
 
 func readLines(serialPort string, rChan chan string) {
@@ -51,7 +51,7 @@ func collectTelegrams(rChan chan string, tChan chan string) {
 			telegram = ""
 		}
 
-		// We usually start halfway trough a telegram. 
+		// We usually start halfway trough a telegram.
 		// Which means that the first telegram would be corrupt.
 		// We therefore ignore everything until the first telegram start.
 		if !foundStart {
@@ -67,7 +67,7 @@ func collectTelegrams(rChan chan string, tChan chan string) {
 	}
 }
 
-func parseTelegrams(rawTelegramChan chan string, tChan chan dsmr.Telegram) {
+func parseTelegrams(rawTelegramChan chan string, rChan chan Readout) {
 	for t := range rawTelegramChan {
 		telegram, err := dsmr.ParseTelegram(t)
 		if err != nil {
@@ -75,6 +75,6 @@ func parseTelegrams(rawTelegramChan chan string, tChan chan dsmr.Telegram) {
 			continue
 		}
 
-		tChan <- telegram
+		rChan <- Readout{telegram}
 	}
 }
