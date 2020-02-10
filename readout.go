@@ -86,3 +86,13 @@ func (r *Readout) TotalPowerDeliveredPeakTarif() float64 {
 	f, _ := strconv.ParseFloat(raw, 64)
 	return f
 }
+
+// CurrentTarif returns the current tarif.
+func (r *Readout) CurrentTarif() int64 {
+	raw, ok := r.telegram.TariffIndicatorElectricity()
+	if !ok {
+		return 0
+	}
+	f, _ := strconv.ParseInt(raw, 10, 64)
+	return f
+}
