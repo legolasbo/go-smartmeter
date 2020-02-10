@@ -85,7 +85,7 @@ func (s *SQL) createTable(tableName string) {
 
 func (s *SQL) initializeInsertStatement() {
 	stmt, err := s.db.Prepare(`INSERT samples SET 
-	timestamp DATETIME,
+			timestamp=?,
 			date=?,
 			time=?,
 			tarif=?,
