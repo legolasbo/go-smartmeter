@@ -119,7 +119,7 @@ func (s *SQL) ensureInitialized() {
 func (s *SQL) Insert(readout Readout) {
 	s.ensureInitialized()
 	_, err := s.insertStatement.Exec(
-		readout.Timestamp(),
+		readout.Timestamp().Format("2006-01-02 15:04:05"),
 		readout.Timestamp().Format("2016-01-02"),
 		readout.Timestamp().Format("15:04:05"),
 		readout.PowerReceived(),
