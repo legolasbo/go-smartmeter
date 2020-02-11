@@ -33,7 +33,7 @@ func (s *SQL) initialize() {
 }
 
 func (s *SQL) prepareTables() {
-	tables := []string{"samples"}
+	tables := []string{"readouts"}
 
 	for _, table := range tables {
 		if !s.tableExists(table) {
@@ -60,7 +60,7 @@ func (s *SQL) createTable(tableName string) {
 	var query string
 
 	switch tableName {
-	case "samples":
+	case "readouts":
 		query = `CREATE TABLE readouts (
 			id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, 
 			timestamp DATETIME,
@@ -84,7 +84,7 @@ func (s *SQL) createTable(tableName string) {
 }
 
 func (s *SQL) initializeInsertStatement() {
-	stmt, err := s.db.Prepare(`INSERT samples SET 
+	stmt, err := s.db.Prepare(`INSERT readout SET 
 			timestamp=?,
 			date=?,
 			time=?,
