@@ -84,7 +84,7 @@ func (s *SQL) createTable(tableName string) {
 }
 
 func (s *SQL) initializeInsertStatement() {
-	stmt, err := s.db.Prepare(`INSERT readout SET 
+	stmt, err := s.db.Prepare(`INSERT readouts SET 
 			timestamp=?,
 			date=?,
 			time=?,
