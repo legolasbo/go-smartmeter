@@ -122,6 +122,7 @@ func (s *SQL) Insert(readout Readout) {
 		readout.Timestamp().Format("2006-01-02 15:04:05"),
 		readout.Timestamp().Format("2016-01-02"),
 		readout.Timestamp().Format("15:04:05"),
+		readout.CurrentTarif(),
 		readout.PowerReceived(),
 		readout.PowerDelivered(),
 		readout.GasReceived(2),
