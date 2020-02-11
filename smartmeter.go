@@ -9,6 +9,9 @@ import (
 	dsmr "github.com/legolasbo/go-dsmr"
 )
 
+// AllowSerialPortFailure adds the option to continue if the serial connection fails.
+var AllowSerialPortFailure = false
+
 // ReadTelegrams reads telegrams from the given serial port into the given readout channel.
 func ReadTelegrams(serialPort string, rChan chan Readout) {
 	lineChan := make(chan string)
@@ -26,6 +29,9 @@ func readLines(serialPort string, rChan chan string) {
 
 	s, err := serial.OpenPort(c)
 	if err != nil {
+		if AllowSerialPortFailure {
+			return;
+		}
 		log.Fatal(err)
 	}
 
@@ -33,7 +39,7 @@ func readLines(serialPort string, rChan chan string) {
 	for {
 		reply, err := reader.ReadString('\n')
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
 			continue
 		}
 
@@ -71,7 +77,7 @@ func parseTelegrams(rawTelegramChan chan string, rChan chan Readout) {
 	for t := range rawTelegramChan {
 		telegram, err := dsmr.ParseTelegram(t)
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
 			continue
 		}
 
