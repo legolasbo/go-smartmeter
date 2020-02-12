@@ -10,6 +10,8 @@ import (
 type Storage interface {
 	// Insert inserts a readout into the storage backend.
 	Insert(readout Readout)
+	// GetRange retrieves a set of readouts within the given range.
+	GetRange(start time.Time, end time.Time) ([]readoutData, error)
 }
 
 // SQL provides an SQL implementation of the storage backend.
@@ -120,7 +122,7 @@ func (s *SQL) Insert(readout Readout) {
 	s.ensureInitialized()
 	_, err := s.insertStatement.Exec(
 		readout.Timestamp().Format("2006-01-02 15:04:05"),
-		readout.Timestamp().Format("2016-01-02"),
+		readout.Timestamp().Format("2006-01-02"),
 		readout.Timestamp().Format("15:04:05"),
 		readout.CurrentTarif(),
 		readout.PowerReceived(),
@@ -135,6 +137,41 @@ func (s *SQL) Insert(readout Readout) {
 	if err != nil {
 		log.Fatal("Insert error:", err)
 	}
+}
+
+type readoutData struct {
+	Timestamp                    string
+	Tarif                        int
+	PowerReceived                float64
+	PowerDelivered               float64
+	GasReceived                  float64
+	TotalPowerDeliveredLowTarif  float64
+	TotalPowerDeliveredPeakTarif float64
+	TotalPowerReceivedLowTarif   float64
+	TotalPowerReceivedPeakTarif  float64
+}
+
+// GetRange retrieves a range of readout data from the database.
+func (s *SQL) GetRange(start time.Time, end time.Time) ([]readoutData, error) {
+	s.ensureInitialized()
+
+	data := make([]readoutData, 0)
+	sarg := start.Format("2006-01-02")
+	earg := end.Format("2006-01-02")
+	rows, err := s.db.Query(`SELECT * FROM readouts WHERE date >= ? AND date <= ?`, sarg, earg)
+	if err != nil {
+		log.Println(err)
+		return data, err
+	}
+
+	var d, t string
+	for rows.Next() {
+		rd := readoutData{}
+		rows.Scan(&rd.Timestamp, &d, &t, &rd.Tarif, &rd.PowerReceived, &rd.PowerDelivered, &rd.GasReceived, &rd.TotalPowerDeliveredLowTarif, &rd.TotalPowerDeliveredPeakTarif, &rd.TotalPowerReceivedLowTarif, &rd.TotalPowerReceivedPeakTarif)
+		data = append(data, rd)
+	}
+
+	return data, nil
 }
 
 func panicOnError(err error) {
