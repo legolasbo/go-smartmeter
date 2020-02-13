@@ -3,6 +3,7 @@ package smartmeter
 import (
 	"database/sql"
 	"log"
+	"math"
 	"time"
 )
 
@@ -12,6 +13,8 @@ type Storage interface {
 	Insert(readout Readout)
 	// GetRange retrieves a set of readouts within the given range.
 	GetRange(start time.Time, end time.Time) ([]readoutData, error)
+	// GetAveragedRange retrieves a set of readouts within the given range and averages them over a given interval.
+	GetAveragedRange(start time.Time, end time.Time, interval time.Duration) ([]readoutData, error)
 }
 
 // SQL provides an SQL implementation of the storage backend.
@@ -170,19 +173,64 @@ func (s *SQL) GetRange(start time.Time, end time.Time) ([]readoutData, error) {
 	for rows.Next() {
 		rows.Scan(&id, &ts, &d, &t, &tarif, &pRec, &pDel, &gRec, &TPRL, &TPRP, &TPDL, &TPDP)
 		data = append(data, readoutData{
-			Timestamp: ts,
-			Tarif: tarif,
-			PowerReceived: pRec,
-			PowerDelivered: pDel,
-			GasReceived: gRec,
-			TotalPowerReceivedLowTarif: TPRL,
-			TotalPowerReceivedPeakTarif: TPRP,
-			TotalPowerDeliveredLowTarif: TPDL,
+			Timestamp:                    ts,
+			Tarif:                        tarif,
+			PowerReceived:                pRec,
+			PowerDelivered:               pDel,
+			GasReceived:                  gRec,
+			TotalPowerReceivedLowTarif:   TPRL,
+			TotalPowerReceivedPeakTarif:  TPRP,
+			TotalPowerDeliveredLowTarif:  TPDL,
 			TotalPowerDeliveredPeakTarif: TPDP,
 		})
 	}
 
 	return data, nil
+}
+
+// GetAveragedRange retrieves a set of readouts within the given range and averages them over a given interval.
+func (s *SQL) GetAveragedRange(start time.Time, end time.Time, interval time.Duration) ([]readoutData, error) {
+	completeRange, err := s.GetRange(start, end)
+	if err != nil || interval == time.Second {
+		return completeRange, err
+	}
+
+	averagedRanges := make([]readoutData, 0)
+	numReadouts := int(interval.Seconds())
+	for i := 0; i < len(completeRange); i += numReadouts {
+		rangeEnd := i+numReadouts
+		if rangeEnd > len(completeRange) {
+			rangeEnd = len(completeRange)
+		}
+
+		currRange := completeRange[i : rangeEnd]
+		currReadout := readoutData{
+			Timestamp: currRange[0].Timestamp,
+			Tarif:     currRange[0].Tarif,
+		}
+		for _, c := range currRange {
+			currReadout.PowerReceived += c.PowerReceived
+			currReadout.PowerDelivered += c.PowerDelivered
+			currReadout.GasReceived += c.GasReceived
+			currReadout.TotalPowerDeliveredLowTarif += c.TotalPowerDeliveredLowTarif
+			currReadout.TotalPowerDeliveredPeakTarif += c.TotalPowerDeliveredPeakTarif
+			currReadout.TotalPowerReceivedLowTarif += c.TotalPowerReceivedLowTarif
+			currReadout.TotalPowerReceivedPeakTarif += c.TotalPowerReceivedPeakTarif
+		}
+
+		divisor := float64(len(currRange))
+		currReadout.PowerReceived = math.Round(currReadout.PowerReceived * 1000 / divisor) / 1000
+		currReadout.PowerDelivered = math.Round(currReadout.PowerDelivered * 1000 / divisor) / 1000
+		currReadout.GasReceived = math.Round(currReadout.GasReceived * 1000 / divisor) / 1000
+		currReadout.TotalPowerDeliveredLowTarif = math.Round(currReadout.TotalPowerDeliveredLowTarif * 1000 / divisor) / 1000
+		currReadout.TotalPowerDeliveredPeakTarif = math.Round(currReadout.TotalPowerDeliveredPeakTarif * 1000 / divisor) / 1000
+		currReadout.TotalPowerReceivedLowTarif = math.Round(currReadout.TotalPowerReceivedLowTarif * 1000 / divisor) / 1000
+		currReadout.TotalPowerReceivedPeakTarif = math.Round(currReadout.TotalPowerReceivedPeakTarif * 1000 / divisor) / 1000
+
+		averagedRanges = append(averagedRanges, currReadout)
+	}
+
+	return averagedRanges, nil
 }
 
 func panicOnError(err error) {
