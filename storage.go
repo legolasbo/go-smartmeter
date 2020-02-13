@@ -168,17 +168,17 @@ func (s *SQL) GetRange(start time.Time, end time.Time) ([]readoutData, error) {
 	var id, tarif int
 	var pRec, pDel, gRec, TPDL, TPDP, TPRL, TPRP float64
 	for rows.Next() {
-		rows.Scan(&id, &ts, &d, &t, &tarif, &pRec, &pDel, &gRec, &TPDL, &TPDP, &TPRL, &TPRP)
+		rows.Scan(&id, &ts, &d, &t, &tarif, &pRec, &pDel, &gRec, &TPRL, &TPRP, &TPDL, &TPDP)
 		data = append(data, readoutData{
 			Timestamp: ts,
 			Tarif: tarif,
 			PowerReceived: pRec,
 			PowerDelivered: pDel,
 			GasReceived: gRec,
-			TotalPowerDeliveredLowTarif: TPDL,
-			TotalPowerDeliveredPeakTarif: TPDP,
 			TotalPowerReceivedLowTarif: TPRL,
 			TotalPowerReceivedPeakTarif: TPRP,
+			TotalPowerDeliveredLowTarif: TPDL,
+			TotalPowerDeliveredPeakTarif: TPDP,
 		})
 	}
 
