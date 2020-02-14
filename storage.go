@@ -143,6 +143,7 @@ func (s *SQL) Insert(readout Readout) {
 }
 
 type readoutData struct {
+	timestamp					 time.Time
 	Timestamp                    string
 	Tarif                        int
 	PowerReceived                float64
@@ -152,6 +153,18 @@ type readoutData struct {
 	TotalPowerDeliveredPeakTarif float64
 	TotalPowerReceivedLowTarif   float64
 	TotalPowerReceivedPeakTarif  float64
+}
+
+func (r *readoutData) getTimestamp() time.Time {
+	if r.timestamp.Equal(time.Time{}) {
+		t, err := time.Parse("2006-01-02 15:04:05", r.Timestamp)
+		if err != nil {
+			log.Println(err)
+		}
+		r.timestamp = t
+	}
+
+	return r.timestamp
 }
 
 // GetRange retrieves a range of readout data from the database.
@@ -195,15 +208,11 @@ func (s *SQL) GetAveragedRange(start time.Time, end time.Time, interval time.Dur
 		return completeRange, err
 	}
 
-	averagedRanges := make([]readoutData, 0)
-	numReadouts := int(interval.Seconds())
-	for i := 0; i < len(completeRange); i += numReadouts {
-		rangeEnd := i+numReadouts
-		if rangeEnd > len(completeRange) {
-			rangeEnd = len(completeRange)
-		}
+	indexes := getRangeIndexes(completeRange, interval)
 
-		currRange := completeRange[i : rangeEnd]
+	averagedRanges := make([]readoutData, 0)
+	for _, i := range indexes {
+		currRange := completeRange[i.start:i.end]
 		currReadout := readoutData{
 			Timestamp: currRange[0].Timestamp,
 			Tarif:     currRange[0].Tarif,
@@ -219,18 +228,57 @@ func (s *SQL) GetAveragedRange(start time.Time, end time.Time, interval time.Dur
 		}
 
 		divisor := float64(len(currRange))
-		currReadout.PowerReceived = math.Round(currReadout.PowerReceived * 1000 / divisor) / 1000
-		currReadout.PowerDelivered = math.Round(currReadout.PowerDelivered * 1000 / divisor) / 1000
-		currReadout.GasReceived = math.Round(currReadout.GasReceived * 1000 / divisor) / 1000
-		currReadout.TotalPowerDeliveredLowTarif = math.Round(currReadout.TotalPowerDeliveredLowTarif * 1000 / divisor) / 1000
-		currReadout.TotalPowerDeliveredPeakTarif = math.Round(currReadout.TotalPowerDeliveredPeakTarif * 1000 / divisor) / 1000
-		currReadout.TotalPowerReceivedLowTarif = math.Round(currReadout.TotalPowerReceivedLowTarif * 1000 / divisor) / 1000
-		currReadout.TotalPowerReceivedPeakTarif = math.Round(currReadout.TotalPowerReceivedPeakTarif * 1000 / divisor) / 1000
+		currReadout.PowerReceived = math.Round(currReadout.PowerReceived*1000/divisor) / 1000
+		currReadout.PowerDelivered = math.Round(currReadout.PowerDelivered*1000/divisor) / 1000
+		currReadout.GasReceived = math.Round(currReadout.GasReceived*1000/divisor) / 1000
+		currReadout.TotalPowerDeliveredLowTarif = math.Round(currReadout.TotalPowerDeliveredLowTarif*1000/divisor) / 1000
+		currReadout.TotalPowerDeliveredPeakTarif = math.Round(currReadout.TotalPowerDeliveredPeakTarif*1000/divisor) / 1000
+		currReadout.TotalPowerReceivedLowTarif = math.Round(currReadout.TotalPowerReceivedLowTarif*1000/divisor) / 1000
+		currReadout.TotalPowerReceivedPeakTarif = math.Round(currReadout.TotalPowerReceivedPeakTarif*1000/divisor) / 1000
 
 		averagedRanges = append(averagedRanges, currReadout)
 	}
 
 	return averagedRanges, nil
+}
+
+type rangeKeys struct {
+	start, end int
+}
+
+func getRangeIndexes(readouts []readoutData, interval time.Duration) []rangeKeys {
+	var keys []rangeKeys
+
+	startKey := 0
+	numReadouts := len(readouts)
+	for i := 0; i < numReadouts; i++ {
+		if i == startKey {
+			continue
+		}
+
+		sr := readouts[startKey]
+		cr := readouts[i]
+
+		sTime := sr.getTimestamp()
+		if sTime.Equal(time.Time{}) {
+			startKey++
+			continue
+		}
+
+		cTime := cr.getTimestamp()
+		if cTime.Sub(sTime) < interval && i < numReadouts-1 {
+			continue
+		}
+
+		if i == numReadouts-1 {
+			i++
+		}
+
+		keys = append(keys, rangeKeys{startKey, i - 1})
+		startKey = i
+	}
+
+	return keys
 }
 
 func panicOnError(err error) {
