@@ -18,9 +18,9 @@ type Storage interface {
 	// Insert inserts a readout into the storage backend.
 	Insert(readout Readout)
 	// GetRange retrieves a set of readouts within the given range.
-	GetRange(start time.Time, end time.Time) ([]readoutData, error)
+	GetRange(start time.Time, end time.Time) ([]ReadoutData, error)
 	// GetAveragedRange retrieves a set of readouts within the given range and averages them over a given interval.
-	GetAveragedRange(start time.Time, end time.Time, interval time.Duration) ([]readoutData, error)
+	GetAveragedRange(start time.Time, end time.Time, interval time.Duration) ([]ReadoutData, error)
 }
 
 // SQL provides an SQL implementation of the storage backend.
@@ -148,7 +148,7 @@ func (s *SQL) Insert(readout Readout) {
 	}
 }
 
-type readoutData struct {
+type ReadoutData struct {
 	timestamp                    time.Time
 	Timestamp                    string
 	Tarif                        int
@@ -161,7 +161,7 @@ type readoutData struct {
 	TotalPowerReceivedPeakTarif  float64
 }
 
-func (r *readoutData) getTimestamp() time.Time {
+func (r *ReadoutData) getTimestamp() time.Time {
 	if r.timestamp.Equal(time.Time{}) {
 		t, err := time.Parse("2006-01-02 15:04:05", r.Timestamp)
 		if err != nil {
@@ -174,10 +174,10 @@ func (r *readoutData) getTimestamp() time.Time {
 }
 
 // GetRange retrieves a range of readout data from the database.
-func (s *SQL) GetRange(start time.Time, end time.Time) ([]readoutData, error) {
+func (s *SQL) GetRange(start time.Time, end time.Time) ([]ReadoutData, error) {
 	s.ensureInitialized()
 
-	data := make([]readoutData, 0)
+	data := make([]ReadoutData, 0)
 	sarg := start.Format("2006-01-02 15:04:05")
 	earg := end.Format("2006-01-02 15:04:05")
 	rows, err := s.db.Query(`SELECT * FROM readouts WHERE timestamp >= ? AND timestamp <= ?`, sarg, earg)
@@ -191,7 +191,7 @@ func (s *SQL) GetRange(start time.Time, end time.Time) ([]readoutData, error) {
 	var pRec, pDel, gRec, TPDL, TPDP, TPRL, TPRP float64
 	for rows.Next() {
 		rows.Scan(&id, &ts, &d, &t, &tarif, &pRec, &pDel, &gRec, &TPRL, &TPRP, &TPDL, &TPDP)
-		data = append(data, readoutData{
+		data = append(data, ReadoutData{
 			Timestamp:                    ts,
 			Tarif:                        tarif,
 			PowerReceived:                pRec,
@@ -208,7 +208,7 @@ func (s *SQL) GetRange(start time.Time, end time.Time) ([]readoutData, error) {
 }
 
 // GetAveragedRange retrieves a set of readouts within the given range and averages them over a given interval.
-func (s *SQL) GetAveragedRange(start time.Time, end time.Time, interval time.Duration) ([]readoutData, error) {
+func (s *SQL) GetAveragedRange(start time.Time, end time.Time, interval time.Duration) ([]ReadoutData, error) {
 	completeRange, err := s.GetRange(start, end)
 	if err != nil || interval == time.Second {
 		return completeRange, err
@@ -216,10 +216,10 @@ func (s *SQL) GetAveragedRange(start time.Time, end time.Time, interval time.Dur
 
 	indexes := getRangeIndexes(completeRange, interval)
 
-	averagedRanges := make([]readoutData, 0)
+	averagedRanges := make([]ReadoutData, 0)
 	for _, i := range indexes {
 		currRange := completeRange[i.start:i.end]
-		currReadout := readoutData{
+		currReadout := ReadoutData{
 			Timestamp: currRange[0].Timestamp,
 			Tarif:     currRange[0].Tarif,
 		}
@@ -252,7 +252,7 @@ type rangeKeys struct {
 	start, end int
 }
 
-func getRangeIndexes(readouts []readoutData, interval time.Duration) []rangeKeys {
+func getRangeIndexes(readouts []ReadoutData, interval time.Duration) []rangeKeys {
 	var keys []rangeKeys
 
 	startKey := 0
