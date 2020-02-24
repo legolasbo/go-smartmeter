@@ -2,15 +2,9 @@ package smartmeter
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"math"
-	"regexp"
 	"time"
-)
-
-var (
-	dateTimeRegex = regexp.MustCompile(`(\d{4}-\d{2}-\d{2})? ?(\d{2}:\d{2}:\d{2})?`)
 )
 
 // Storage provides an abstraction for the storage backend.
@@ -292,26 +286,4 @@ func panicOnError(err error) {
 	if err != nil {
 		log.Panicln(err)
 	}
-}
-
-// StringToTime converts a string to a valid time to be used in a range query.
-func StringToTime(str string, loc *time.Location, defaultTime string) (time.Time, error) {
-	f := "2006-01-02 15:04:05"
-	match := dateTimeRegex.FindStringSubmatch(str)
-	if match[1] != "" && match[2] != "" {
-		return time.ParseInLocation(f, match[0], loc)
-	}
-
-	if match[1] != "" {
-		str = fmt.Sprintf("%s %s", match[1], defaultTime)
-		return time.ParseInLocation(f, str, loc)
-	}
-
-	if match[2] != "" {
-		str = fmt.Sprintf("%s %s", time.Now().Format("2006-01-02"), match[2])
-		return time.ParseInLocation(f, str, loc)
-	}
-
-	str = fmt.Sprintf("%s %s", time.Now().Format("2006-01-02"), defaultTime)
-	return time.ParseInLocation(f, str, loc)
 }
