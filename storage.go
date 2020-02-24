@@ -148,6 +148,7 @@ func (s *SQL) Insert(readout Readout) {
 	}
 }
 
+// ReadoutData can contain data as stored in the database.
 type ReadoutData struct {
 	timestamp                    time.Time
 	Timestamp                    string

@@ -25,6 +25,7 @@ func NewDataRetrievalOption(i int) DataRetrievalOption {
 	return DataRetrievalOption(i)
 }
 
+// ReadoutsToJSON converts a slice of ReadoutData to json whilst taking the given DataRetrievalOption into account.
 func ReadoutsToJSON(readouts []ReadoutData, retrieve DataRetrievalOption) []byte {
 	output := make([]interface{}, len(readouts))
 
