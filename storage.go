@@ -168,14 +168,45 @@ func (r *ReadoutData) getTimestamp() time.Time {
 	return r.timestamp
 }
 
+func fieldsFromDataRetrievalOption(retrieve DataRetrievalOption) string {
+	switch retrieve {
+		case Gas: return "MIN(timestamp), MAX(gas_received)"
+		case Power: return "timestamp, power_received, power_deliverd"
+		case Totals: return "timestamp, total_power_received_low, total_power_received_peak, total_power_delivered_low, total_power_delivered_peak"
+		case Gas + Power: return "timestamp, gas_received, power_received, power_deliverd"
+		case Gas + Totals:return "timestamp, gas_received, total_power_received_low, total_power_received_peak, total_power_delivered_low, total_power_delivered_peak"
+		case Power + Totals: return "timestamp, power_received, power_deliverd, total_power_received_low, total_power_received_peak, total_power_delivered_low, total_power_delivered_peak"
+	}
+	return "*"
+}
+
+func groupingFromDataRetrievalOption(retrieve DataRetrievalOption) string {
+	switch retrieve {
+		case Gas: return " GROUP BY gas_received"
+		case Power: return ""
+		case Totals: return ""
+		case Gas + Power: return ""
+		case Gas + Totals:return ""
+		case Power + Totals: return ""
+	}
+	return ""
+}
+
 // GetRange retrieves a range of readout data from the database.
-func (s *SQL) GetRange(start time.Time, end time.Time) ([]ReadoutData, error) {
+func (s *SQL) GetRange(start time.Time, end time.Time, retrieve DataRetrievalOption) ([]ReadoutData, error) {
 	s.ensureInitialized()
 
+	
 	data := make([]ReadoutData, 0)
 	sarg := start.Format("2006-01-02 15:04:05")
 	earg := end.Format("2006-01-02 15:04:05")
-	rows, err := s.db.Query(`SELECT * FROM readouts WHERE timestamp >= ? AND timestamp <= ?`, sarg, earg)
+	fields := fieldsFromDataRetrievalOption(retrieve)
+	grouping := groupingFromDataRetrievalOption(retrieve)
+	var q string = "SELECT "+fields+" FROM readouts WHERE timestamp >= ? AND timestamp <= ?"+grouping
+
+	startTime := time.Now()
+	log.Println("Running query: ", q, sarg, earg)
+	rows, err := s.db.Query(q, sarg, earg)
 	if err != nil {
 		log.Println(err)
 		return data, err
@@ -184,8 +215,17 @@ func (s *SQL) GetRange(start time.Time, end time.Time) ([]ReadoutData, error) {
 	var ts, d, t string
 	var id, tarif int
 	var pRec, pDel, gRec, TPDL, TPDP, TPRL, TPRP float64
+	log.Println("Retrieving data")
 	for rows.Next() {
-		rows.Scan(&id, &ts, &d, &t, &tarif, &pRec, &pDel, &gRec, &TPRL, &TPRP, &TPDL, &TPDP)
+		switch retrieve {
+		case Gas: rows.Scan(&ts, &gRec); break
+		case Power: rows.Scan(&ts, &pRec, &pDel); break
+		case Totals: rows.Scan(&ts, &TPRL, &TPRP, &TPDL, &TPDP); break
+		case Gas + Power: rows.Scan(&ts, &gRec, &pRec, &pDel); break
+		case Gas + Totals : rows.Scan(&ts, &gRec, &TPRL, &TPRP, &TPDL, &TPDP); break
+		case Power + Totals: rows.Scan(&ts, &pRec, &pDel, &TPRL, &TPRP, &TPDL, &TPDP); break
+		default: rows.Scan(&id, &ts, &d, &t, &tarif, &pRec, &pDel, &gRec, &TPRL, &TPRP, &TPDL, &TPDP); break
+		}
 		data = append(data, ReadoutData{
 			Timestamp:                    ts,
 			Tarif:                        tarif,
@@ -199,20 +239,27 @@ func (s *SQL) GetRange(start time.Time, end time.Time) ([]ReadoutData, error) {
 		})
 	}
 
+	log.Println("Data retrieved in ", time.Now().Sub(startTime))
 	return data, nil
 }
 
 // GetAveragedRange retrieves a set of readouts within the given range and averages them over a given interval.
-func (s *SQL) GetAveragedRange(start time.Time, end time.Time, interval time.Duration) ([]ReadoutData, error) {
-	completeRange, err := s.GetRange(start, end)
+func (s *SQL) GetAveragedRange(start time.Time, end time.Time, interval time.Duration, retrieve DataRetrievalOption) ([]ReadoutData, error) {
+	completeRange, err := s.GetRange(start, end, retrieve)
 	if err != nil || interval == time.Second {
 		return completeRange, err
 	}
 
+	startTime := time.Now()
 	indexes := getRangeIndexes(completeRange, interval)
 
 	averagedRanges := make([]ReadoutData, 0)
 	for _, i := range indexes {
+		if (i.start == i.end) {
+			averagedRanges = append(averagedRanges, completeRange[i.start])
+			continue
+		}
+
 		currRange := completeRange[i.start:i.end]
 		currReadout := ReadoutData{
 			Timestamp: currRange[0].Timestamp,
@@ -240,6 +287,7 @@ func (s *SQL) GetAveragedRange(start time.Time, end time.Time, interval time.Dur
 		averagedRanges = append(averagedRanges, currReadout)
 	}
 
+	log.Println("Done averaging in:", time.Now().Sub(startTime))
 	return averagedRanges, nil
 }
 
