@@ -1,6 +1,10 @@
 package smartmeter
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+)
 
 // All indicates that all datapoints should be retrieved. This is the default option.
 const All DataRetrievalOption = 0
@@ -23,6 +27,98 @@ func NewDataRetrievalOption(i int) DataRetrievalOption {
 		return All
 	}
 	return DataRetrievalOption(i)
+}
+
+func ReadoutsToCSV(readouts []ReadoutData, retrieve DataRetrievalOption) []byte {
+	header := getCSVHeader(retrieve)
+	mapCallback := getReadoutToCSVFunction(retrieve)
+	out := make([]string, len(readouts))
+	for i, v := range readouts {
+		out[i] = mapCallback(v)
+	}
+
+	return []byte(header + strings.Join(out, ""))
+}
+
+func getCSVHeader(retrieve DataRetrievalOption) string {
+	header := "Timestamp"
+
+	switch retrieve {
+	case Gas:
+		header += ",Gas received m3\n"
+		break
+
+	case Power:
+		header += ",Power delivered kWh,Power received kWh\n"
+		break
+
+	case Totals:
+		header += ",Total power delivered low tarif kWh,Total power delivered peak tarif kWh,Total power received low tarif kWh,Total power received peak tarif kWh\n"
+		break
+
+	case Gas + Power:
+		header += ",Gas received m3,Power delivered kWh,Power received kWh\n"
+		break
+
+	case Gas + Totals:
+		header += ",Gas received m3,Total power delivered low tarif kWh,Total power delivered peak tarif kWh,Total power received low tarif kWh,Total power received peak tarif kWh\n"
+		break
+
+	case Power + Totals:
+		header += ",Power delivered kWh,Power received kWh,Total power delivered low tarif kWh,Total power delivered peak tarif kWh,Total power received low tarif kWh,Total power received peak tarif kWh\n"
+		break
+
+	default:
+		header += ",Gas received m3,Power delivered kWh,Power received kWh,Total power delivered low tarif kWh,Total power delivered peak tarif kWh,Total power received low tarif kWh,Total power received peak tarif kWh\n"
+	}
+	return header
+}
+
+func getReadoutToCSVFunction(retrieve DataRetrievalOption) func(data ReadoutData) string {
+	switch retrieve {
+	case Gas:
+		return readoutToCSVLineGas
+	case Power:
+		return readoutToCSVLinePower
+	case Totals:
+		return readoutToCSVLineTotals
+	case Gas + Power:
+		return readoutToCSVLineGasPower
+	case Gas + Totals:
+		return readoutToCSVLineGasTotals
+	case Power + Totals:
+		return readoutToCSVLinePowerTotals
+	default:
+		return readoutToCSVAll
+	}
+}
+
+func readoutToCSVAll(v ReadoutData) string {
+	return fmt.Sprintf("%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n", v.Timestamp, v.GasReceived, v.PowerDelivered, v.PowerReceived, v.TotalPowerDeliveredLowTarif, v.TotalPowerDeliveredPeakTarif, v.TotalPowerReceivedLowTarif, v.TotalPowerReceivedPeakTarif)
+}
+
+func readoutToCSVLinePowerTotals(v ReadoutData) string {
+	return fmt.Sprintf("%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n", v.Timestamp, v.PowerDelivered, v.PowerReceived, v.TotalPowerDeliveredLowTarif, v.TotalPowerDeliveredPeakTarif, v.TotalPowerReceivedLowTarif, v.TotalPowerReceivedPeakTarif)
+}
+
+func readoutToCSVLineGasTotals(v ReadoutData) string {
+	return fmt.Sprintf("%s,%.3f,%.3f,%.3f,%.3f,%.3f\n", v.Timestamp, v.GasReceived, v.TotalPowerDeliveredLowTarif, v.TotalPowerDeliveredPeakTarif, v.TotalPowerReceivedLowTarif, v.TotalPowerReceivedPeakTarif)
+}
+
+func readoutToCSVLineGasPower(v ReadoutData) string {
+	return fmt.Sprintf("%s,%.3f,%.3f,%.3f\n", v.Timestamp, v.GasReceived, v.PowerDelivered, v.PowerReceived)
+}
+
+func readoutToCSVLineTotals(v ReadoutData) string {
+	return fmt.Sprintf("%s,%.3f,%.3f,%.3f,%.3f\n", v.Timestamp, v.TotalPowerDeliveredLowTarif, v.TotalPowerDeliveredPeakTarif, v.TotalPowerReceivedLowTarif, v.TotalPowerReceivedPeakTarif)
+}
+
+func readoutToCSVLinePower(v ReadoutData) string {
+	return fmt.Sprintf("%s,%.3f,%.3f\n", v.Timestamp, v.PowerDelivered, v.PowerReceived)
+}
+
+func readoutToCSVLineGas(v ReadoutData) string {
+	return fmt.Sprintf("%s,%.3f\n", v.Timestamp, v.GasReceived)
 }
 
 // ReadoutsToJSON converts a slice of ReadoutData to json whilst taking the given DataRetrievalOption into account.
