@@ -142,6 +142,21 @@ func (s *SQL) Insert(readout Readout) {
 	}
 }
 
+func ReadoutDataFromReadout(r Readout) ReadoutData {
+	return ReadoutData{
+		timestamp:                    r.Timestamp(),
+		Timestamp:                    r.Timestamp().Format("2006-01-02 15:04:05"),
+		Tarif:                        int(r.CurrentTarif()),
+		PowerReceived:                r.PowerReceived(),
+		PowerDelivered:               r.PowerDelivered(),
+		GasReceived:                  r.GasReceived(2),
+		TotalPowerDeliveredLowTarif:  r.TotalPowerDeliveredLowTarif(),
+		TotalPowerDeliveredPeakTarif: r.TotalPowerDeliveredPeakTarif(),
+		TotalPowerReceivedLowTarif:   r.TotalPowerReceivedLowTarif(),
+		TotalPowerReceivedPeakTarif:  r.TotalPowerReceivedPeakTarif(),
+	}
+}
+
 // ReadoutData can contain data as stored in the database.
 type ReadoutData struct {
 	timestamp                    time.Time
@@ -170,24 +185,36 @@ func (r *ReadoutData) getTimestamp() time.Time {
 
 func fieldsFromDataRetrievalOption(retrieve DataRetrievalOption) string {
 	switch retrieve {
-		case Gas: return "MIN(timestamp), MAX(gas_received)"
-		case Power: return "timestamp, power_received, power_deliverd"
-		case Totals: return "timestamp, total_power_received_low, total_power_received_peak, total_power_delivered_low, total_power_delivered_peak"
-		case Gas + Power: return "timestamp, gas_received, power_received, power_deliverd"
-		case Gas + Totals:return "timestamp, gas_received, total_power_received_low, total_power_received_peak, total_power_delivered_low, total_power_delivered_peak"
-		case Power + Totals: return "timestamp, power_received, power_deliverd, total_power_received_low, total_power_received_peak, total_power_delivered_low, total_power_delivered_peak"
+	case Gas:
+		return "MIN(timestamp), MAX(gas_received)"
+	case Power:
+		return "timestamp, power_received, power_deliverd"
+	case Totals:
+		return "timestamp, total_power_received_low, total_power_received_peak, total_power_delivered_low, total_power_delivered_peak"
+	case Gas + Power:
+		return "timestamp, gas_received, power_received, power_deliverd"
+	case Gas + Totals:
+		return "timestamp, gas_received, total_power_received_low, total_power_received_peak, total_power_delivered_low, total_power_delivered_peak"
+	case Power + Totals:
+		return "timestamp, power_received, power_deliverd, total_power_received_low, total_power_received_peak, total_power_delivered_low, total_power_delivered_peak"
 	}
 	return "*"
 }
 
 func groupingFromDataRetrievalOption(retrieve DataRetrievalOption) string {
 	switch retrieve {
-		case Gas: return " GROUP BY gas_received"
-		case Power: return ""
-		case Totals: return ""
-		case Gas + Power: return ""
-		case Gas + Totals:return ""
-		case Power + Totals: return ""
+	case Gas:
+		return " GROUP BY gas_received"
+	case Power:
+		return ""
+	case Totals:
+		return ""
+	case Gas + Power:
+		return ""
+	case Gas + Totals:
+		return ""
+	case Power + Totals:
+		return ""
 	}
 	return ""
 }
@@ -196,13 +223,12 @@ func groupingFromDataRetrievalOption(retrieve DataRetrievalOption) string {
 func (s *SQL) GetRange(start time.Time, end time.Time, retrieve DataRetrievalOption) ([]ReadoutData, error) {
 	s.ensureInitialized()
 
-	
 	data := make([]ReadoutData, 0)
 	sarg := start.Format("2006-01-02 15:04:05")
 	earg := end.Format("2006-01-02 15:04:05")
 	fields := fieldsFromDataRetrievalOption(retrieve)
 	grouping := groupingFromDataRetrievalOption(retrieve)
-	var q string = "SELECT "+fields+" FROM readouts WHERE timestamp >= ? AND timestamp <= ?"+grouping
+	var q string = "SELECT " + fields + " FROM readouts WHERE timestamp >= ? AND timestamp <= ?" + grouping
 
 	startTime := time.Now()
 	log.Println("Running query: ", q, sarg, earg)
@@ -218,13 +244,27 @@ func (s *SQL) GetRange(start time.Time, end time.Time, retrieve DataRetrievalOpt
 	log.Println("Retrieving data")
 	for rows.Next() {
 		switch retrieve {
-		case Gas: rows.Scan(&ts, &gRec); break
-		case Power: rows.Scan(&ts, &pRec, &pDel); break
-		case Totals: rows.Scan(&ts, &TPRL, &TPRP, &TPDL, &TPDP); break
-		case Gas + Power: rows.Scan(&ts, &gRec, &pRec, &pDel); break
-		case Gas + Totals : rows.Scan(&ts, &gRec, &TPRL, &TPRP, &TPDL, &TPDP); break
-		case Power + Totals: rows.Scan(&ts, &pRec, &pDel, &TPRL, &TPRP, &TPDL, &TPDP); break
-		default: rows.Scan(&id, &ts, &d, &t, &tarif, &pRec, &pDel, &gRec, &TPRL, &TPRP, &TPDL, &TPDP); break
+		case Gas:
+			rows.Scan(&ts, &gRec)
+			break
+		case Power:
+			rows.Scan(&ts, &pRec, &pDel)
+			break
+		case Totals:
+			rows.Scan(&ts, &TPRL, &TPRP, &TPDL, &TPDP)
+			break
+		case Gas + Power:
+			rows.Scan(&ts, &gRec, &pRec, &pDel)
+			break
+		case Gas + Totals:
+			rows.Scan(&ts, &gRec, &TPRL, &TPRP, &TPDL, &TPDP)
+			break
+		case Power + Totals:
+			rows.Scan(&ts, &pRec, &pDel, &TPRL, &TPRP, &TPDL, &TPDP)
+			break
+		default:
+			rows.Scan(&id, &ts, &d, &t, &tarif, &pRec, &pDel, &gRec, &TPRL, &TPRP, &TPDL, &TPDP)
+			break
 		}
 		data = append(data, ReadoutData{
 			Timestamp:                    ts,
@@ -255,7 +295,7 @@ func (s *SQL) GetAveragedRange(start time.Time, end time.Time, interval time.Dur
 
 	averagedRanges := make([]ReadoutData, 0)
 	for _, i := range indexes {
-		if (i.start == i.end) {
+		if i.start == i.end {
 			averagedRanges = append(averagedRanges, completeRange[i.start])
 			continue
 		}

@@ -1,15 +1,37 @@
 package smartmeter
 
 import (
+	"fmt"
+	"github.com/legolasbo/go-dsmr"
+	"math/rand"
 	"strconv"
 	"time"
-
-	"github.com/legolasbo/go-dsmr"
 )
 
 // Readout contains relevant information from a dsmr telegram.
 type Readout struct {
 	telegram dsmr.Telegram
+}
+
+func RandomReadout() Readout {
+	t, err := dsmr.ParseTelegram(fmt.Sprintf(`/ISK5\2M550T-1012
+		0-0:1.0.0(190718204947S)
+		1-0:1.7.0(00.%d*kW)
+		1-0:2.7.0(00.%d*kW)
+		0-0:96.14.0(0001)
+		0-1:24.2.1(191118114002W)(00000.003*m3)
+		0-2:24.2.1(200208141004W)(00417.143*m3)
+		!0000`, rand.Intn(999), rand.Intn(999)))
+	if err != nil {
+		return Readout{
+			telegram: dsmr.Telegram{},
+		}
+	}
+
+	t.DateTime = time.Now()
+	return Readout{
+		telegram: t,
+	}
 }
 
 // Timestamp returns the timestamp.
