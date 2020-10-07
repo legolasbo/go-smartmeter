@@ -2,7 +2,7 @@ package smartmeter
 
 import (
 	"fmt"
-	"github.com/legolasbo/go-dsmr"
+	"github.com/roaldnefs/go-dsmr"
 	"math/rand"
 	"strconv"
 	"time"
@@ -10,7 +10,8 @@ import (
 
 // Readout contains relevant information from a dsmr telegram.
 type Readout struct {
-	telegram dsmr.Telegram
+	Timestamp time.Time
+	telegram  dsmr.Telegram
 }
 
 func RandomReadout() Readout {
@@ -32,11 +33,6 @@ func RandomReadout() Readout {
 	return Readout{
 		telegram: t,
 	}
-}
-
-// Timestamp returns the timestamp.
-func (r *Readout) Timestamp() time.Time {
-	return r.telegram.DateTime
 }
 
 // PowerDelivered returns the kilowatts delivered to the grid in 1 watt resolution.

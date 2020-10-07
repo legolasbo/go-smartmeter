@@ -3,10 +3,11 @@ package smartmeter
 import (
 	"bufio"
 	"log"
+	"time"
 
 	"github.com/tarm/serial"
 
-	dsmr "github.com/legolasbo/go-dsmr"
+	"github.com/roaldnefs/go-dsmr"
 )
 
 // AllowSerialPortFailure adds the option to continue if the serial connection fails.
@@ -30,7 +31,7 @@ func readLines(serialPort string, rChan chan string) {
 	s, err := serial.OpenPort(c)
 	if err != nil {
 		if AllowSerialPortFailure {
-			return;
+			return
 		}
 		log.Fatal(err)
 	}
@@ -81,6 +82,6 @@ func parseTelegrams(rawTelegramChan chan string, rChan chan Readout) {
 			continue
 		}
 
-		rChan <- Readout{telegram}
+		rChan <- Readout{time.Now(), telegram}
 	}
 }

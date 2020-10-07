@@ -124,9 +124,9 @@ func (s *SQL) ensureInitialized() {
 func (s *SQL) Insert(readout Readout) {
 	s.ensureInitialized()
 	_, err := s.insertStatement.Exec(
-		readout.Timestamp().Format("2006-01-02 15:04:05"),
-		readout.Timestamp().Format("2006-01-02"),
-		readout.Timestamp().Format("15:04:05"),
+		readout.Timestamp.Format("2006-01-02 15:04:05"),
+		readout.Timestamp.Format("2006-01-02"),
+		readout.Timestamp.Format("15:04:05"),
 		readout.CurrentTarif(),
 		readout.PowerReceived(),
 		readout.PowerDelivered(),
@@ -144,8 +144,8 @@ func (s *SQL) Insert(readout Readout) {
 
 func ReadoutDataFromReadout(r Readout) ReadoutData {
 	return ReadoutData{
-		timestamp:                    r.Timestamp(),
-		Timestamp:                    r.Timestamp().Format("2006-01-02 15:04:05"),
+		timestamp:                    r.Timestamp,
+		Timestamp:                    r.Timestamp.Format("2006-01-02 15:04:05"),
 		Tarif:                        int(r.CurrentTarif()),
 		PowerReceived:                r.PowerReceived(),
 		PowerDelivered:               r.PowerDelivered(),
